@@ -21,7 +21,7 @@ GroqCloud 的所有 Whisper 模型每天免费使用最多 28800 秒音频！
 
 1. **复制** 这个 URL 并粘贴到你的 HACS 自定义仓库中：
     ```url
-    https://github.com/knoop7/ha-openai-whisper-stt-api
+    https://github.com/knoop7/groqcloud_whisper
     ```
 
 2. **安装** 💻 `OpenAI Whisper Cloud` 集成
