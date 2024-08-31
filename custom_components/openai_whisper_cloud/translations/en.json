@@ -1,69 +1,38 @@
 {
     "config": {
         "abort": {
-            "already_configured": "Device is already configured",
-            "reconfigure_successful": "Reconfigured",
-            "reconfigure_failed": "Reconfiguration failed"
+            "already_configured": "设备已配置",
+            "reconfigure_successful": "重新配置成功",
+            "reconfigure_failed": "重新配置失败"
         },
         "error": {
-            "invalid_api_key": "Invalid API Key",
-            "unauthorized": "Make sure your api key has READ permission to 'Models' and WRITE permission to 'Model capabilities'",
-            "whisper_not_found":  "Whisper model not found"
+            "invalid_api_key": "无效的 API 密钥",
+            "unauthorized": "API 密钥没有权限使用 Whisper 模型",
+            "whisper_model_not_found": "未找到 Whisper 模型"
         },
         "step": {
             "user": {
                 "data": {
-                    "source": "API Provider"
-                }
-            },
-            "whisper": {
-                "data": {
-                    "name": "Name",
-                    "api_key": "API key",
-                    "model": "Model",
-                    "temperature": "Temperature",
-                    "prompt": "Prompt (Optional)"
+                    "name": "名称",
+                    "api_key": "API 密钥",
+                    "model": "模型",
+                    "temperature": "温度",
+                    "prompt": "提示"
                 },
                 "data_description": {
-                    "prompt": "Prompt can be used to improve speech recognition of words or even names.\nou have to provide a list of words or names separated by a comma \", \".\nExample: \"open, close, Chat GPT-3, DALL·E\""
+                    "prompt": "提示可以用来改善对单词或名字的语音识别。你需要提供一个以逗号 \", \" 分隔的单词或名字列表。\n例如：\"打开, 关闭, Chat GPT-3, DALL·E\""
                 }
             },
             "reconfigure": {
                 "data": {
-                    "name": "Name",
-                    "api_key": "API key (Optional)",
-                    "model": "Model",
-                    "temperature": "Temperature",
-                    "prompt": "Prompt (Optional)"
+                    "name": "名称",
+                    "api_key": "API 密钥",
+                    "model": "模型",
+                    "temperature": "温度",
+                    "prompt": "提示"
                 },
                 "data_description": {
-                    "prompt": "Prompt can be used to improve speech recognition of words or even names.\nou have to provide a list of words or names separated by a comma \", \".\nExample: \"open, close, Chat GPT-3, DALL·E\""
-                }
-            }
-        }
-    },
-    "options": {
-        "abort": {
-            "already_configured": "Device is already configured",
-            "reconfigure_successful": "Reconfigured",
-            "reconfigure_failed": "Reconfiguration failed"
-        },
-        "error": {
-            "invalid_api_key": "Invalid API Key",
-            "unauthorized": "Make sure your api key has READ permission to 'Models' and WRITE permission to 'Model capabilities'",
-            "whisper_not_found":  "Whisper model not found"
-        },
-        "step": {
-            "init": {
-                "data": {
-                    "name": "Name",
-                    "api_key": "API key (leave blank to keep existing)",
-                    "model": "Model",
-                    "temperature": "Temperature",
-                    "prompt": "Prompt (Optional)"
-                },
-                "data_description": {
-                    "prompt": "Prompt can be used to improve speech recognition of words or even names.\nYou have to provide a list of words or names separated by a comma \", \".\nExample: \"open, close, Chat GPT-3, DALL·E\""
+                    "prompt": "提示可以用来改善对单词或名字的语音识别。你需要提供一个以逗号 \", \" 分隔的单词或名字列表。\n例如：\"打开, 关闭, Chat GPT-3, DALL·E\""
                 }
             }
         }
