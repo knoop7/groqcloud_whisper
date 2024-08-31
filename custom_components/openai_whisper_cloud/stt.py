@@ -1,4 +1,4 @@
-"""OpenAI Whisper API speech-to-text entity."""
+"""GroqCloud Whisper API speech-to-text entity."""
 
 from __future__ import annotations
 
@@ -21,53 +21,49 @@ from homeassistant.components.stt import (
     SpeechToTextEntity,
 )
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import CONF_API_KEY, CONF_MODEL, CONF_NAME, CONF_SOURCE
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from . import _LOGGER
-from .const import CONF_PROMPT, CONF_TEMPERATURE
-from .whisper_provider import WhisperModel, whisper_providers
-
+from .const import SUPPORTED_LANGUAGES, CONF_LINK
 
 async def async_setup_entry(
     hass: HomeAssistant,
     config_entry: ConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
-    """Set up Demo speech platform via config entry."""
-    _LOGGER.debug(f"STT setup Entry {config_entry.entry_id}")
+    """Set up speech-to-text platform via config entry."""
+    _LOGGER.debug("Setup Entry %s", config_entry.entry_id)
 
-    async_add_entities([
-        OpenAIWhisperCloudEntity(
-            api_url=whisper_providers[config_entry.data[CONF_SOURCE]].url,
-            api_key=config_entry.data[CONF_API_KEY],
-            model=whisper_providers[config_entry.data[CONF_SOURCE]].models[config_entry.options[CONF_MODEL]],
-            temperature=config_entry.options[CONF_TEMPERATURE],
-            prompt=config_entry.options[CONF_PROMPT],
-            name=config_entry.data[CONF_NAME],
-            unique_id=config_entry.entry_id
-        )
-    ])
+    config_data = {
+        "api_key": config_entry.data.get("api_key"),
+        "model": config_entry.data.get("model"),
+        "temperature": config_entry.data.get("temperature"),
+        "prompt": config_entry.data.get("prompt"),
+        "name": config_entry.data.get("name"),
+        "unique_id": config_entry.entry_id,
+        "link": config_entry.data.get(CONF_LINK, ""),  # 传递 CONF_LINK 参数
+    }
 
+    async_add_entities([GroqWhisperCloudEntity(**config_data)])
 
-class OpenAIWhisperCloudEntity(SpeechToTextEntity):
-    """OpenAI Whisper API provider entity."""
+class GroqWhisperCloudEntity(SpeechToTextEntity):
+    """GroqCloud Whisper API entity."""
 
-    def __init__(self, api_url: str, api_key: str, model: WhisperModel, temperature, prompt, name, unique_id) -> None:
+    def __init__(self, api_key, model, temperature, prompt, name, unique_id, link) -> None:
         """Init STT service."""
-        self.api_url = api_url
         self.api_key = api_key
         self.model = model
         self.temperature = temperature
         self.prompt = prompt
         self._attr_name = name
         self._attr_unique_id = unique_id
+        self.link = link  # 保存动态的 API URL
 
     @property
     def supported_languages(self) -> list[str]:
         """Return a list of supported languages."""
-        return self.model.languages
+        return SUPPORTED_LANGUAGES
 
     @property
     def supported_formats(self) -> list[AudioFormats]:
@@ -130,29 +126,26 @@ class OpenAIWhisperCloudEntity(SpeechToTextEntity):
                 wav_file.setsampwidth(2)
                 wav_file.writeframes(data)
 
-            # Ensure the buffer is at the start before passing it
             temp_file.seek(0)
 
             _LOGGER.debug("Temp wav audio file created of %.2f Mb", temp_file.getbuffer().nbytes / (1024 * 1024))
 
-            # Prepare the files parameter with a proper filename
             files = {
                 "file": ("audio.wav", temp_file, "audio/wav"),
             }
 
-            # Prepare the data payload
             data = {
-                "model": self.model.name,
+                "model": self.model,
                 "language": metadata.language,
                 "temperature": self.temperature,
                 "prompt": self.prompt,
-                "response_format": "json",
+                "response_format": "json"
             }
 
-            # Make the request in a separate thread
+            # 使用动态 URL 进行请求
             response = await asyncio.to_thread(
                 requests.post,
-                f"{self.api_url}/v1/audio/transcriptions",
+                f"{self.link}/openai/v1/audio/transcriptions",  # 动态链接
                 headers={
                     "Authorization": f"Bearer {self.api_key}",
                 },
@@ -162,7 +155,6 @@ class OpenAIWhisperCloudEntity(SpeechToTextEntity):
 
             _LOGGER.debug("Transcription request took %f s and returned %d - %s", response.elapsed.seconds, response.status_code, response.reason)
 
-            # Parse the JSON response
             transcription = response.json().get("text", "")
 
             _LOGGER.debug("TRANSCRIPTION: %s", transcription)
