@@ -1,5 +1,3 @@
-"""GroqCloud Whisper API speech-to-text entity."""
-
 from __future__ import annotations
 
 import asyncio
@@ -24,7 +22,6 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from . import _LOGGER
 from .const import SUPPORTED_LANGUAGES, CONF_LINK
 
 async def async_setup_entry(
@@ -32,9 +29,7 @@ async def async_setup_entry(
     config_entry: ConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
-    """Set up speech-to-text platform via config entry."""
-    _LOGGER.debug("Setup Entry %s", config_entry.entry_id)
-
+    """设置通过配置条目的语音转文本平台。"""
     config_data = {
         "api_key": config_entry.data.get("api_key"),
         "model": config_entry.data.get("model"),
@@ -42,42 +37,48 @@ async def async_setup_entry(
         "prompt": config_entry.data.get("prompt"),
         "name": config_entry.data.get("name"),
         "unique_id": config_entry.entry_id,
-        "link": config_entry.data.get(CONF_LINK, ""),  # 传递 CONF_LINK 参数
+        "link": config_entry.data.get(CONF_LINK, ""),
     }
 
     async_add_entities([GroqWhisperCloudEntity(**config_data)])
 
 class GroqWhisperCloudEntity(SpeechToTextEntity):
-    """GroqCloud Whisper API entity."""
+    """GroqCloud Whisper API 实体。"""
 
     def __init__(self, api_key, model, temperature, prompt, name, unique_id, link) -> None:
-        """Init STT service."""
+        """初始化语音转文本服务。"""
         self.api_key = api_key
         self.model = model
         self.temperature = temperature
         self.prompt = prompt
         self._attr_name = name
         self._attr_unique_id = unique_id
-        self.link = link  # 保存动态的 API URL
+        self.link = link
+        self._attr_state = "就绪"
+
+    @property
+    def state(self) -> str:
+        """返回实体的当前状态。"""
+        return self._attr_state
 
     @property
     def supported_languages(self) -> list[str]:
-        """Return a list of supported languages."""
+        """返回支持的语言列表。"""
         return SUPPORTED_LANGUAGES
 
     @property
     def supported_formats(self) -> list[AudioFormats]:
-        """Return a list of supported formats."""
+        """返回支持的格式列表。"""
         return [AudioFormats.WAV]
 
     @property
     def supported_codecs(self) -> list[AudioCodecs]:
-        """Return a list of supported codecs."""
+        """返回支持的编解码器列表。"""
         return [AudioCodecs.PCM]
 
     @property
     def supported_bit_rates(self) -> list[AudioBitRates]:
-        """Return a list of supported bit rates."""
+        """返回支持的比特率列表。"""
         return [
             AudioBitRates.BITRATE_8,
             AudioBitRates.BITRATE_16,
@@ -87,7 +88,7 @@ class GroqWhisperCloudEntity(SpeechToTextEntity):
 
     @property
     def supported_sample_rates(self) -> list[AudioSampleRates]:
-        """Return a list of supported sample rates."""
+        """返回支持的采样率列表。"""
         return [
             AudioSampleRates.SAMPLERATE_8000,
             AudioSampleRates.SAMPLERATE_16000,
@@ -97,25 +98,27 @@ class GroqWhisperCloudEntity(SpeechToTextEntity):
 
     @property
     def supported_channels(self) -> list[AudioChannels]:
-        """Return a list of supported channels."""
+        """返回支持的声道列表。"""
         return [AudioChannels.CHANNEL_MONO, AudioChannels.CHANNEL_STEREO]
 
     async def async_process_audio_stream(
         self, metadata: SpeechMetadata, stream: AsyncIterable[bytes]
     ) -> SpeechResult:
-        """Process an audio stream to STT service."""
-
-        _LOGGER.debug("Processing audio stream: %s", metadata)
+        """处理音频流到语音转文本服务。"""
+        self._attr_state = "处理中"
+        self.async_write_ha_state()
 
         data = b""
         async for chunk in stream:
             data += chunk
             if len(data) / (1024 * 1024) > 24.5:
-                _LOGGER.error("Audio stream size exceed the maximum allowed by OpenAI which is 25Mb")
+                self._attr_state = "错误：音频流大小超过25MB限制"
+                self.async_write_ha_state()
                 return SpeechResult("", SpeechResultState.ERROR)
 
         if not data:
-            _LOGGER.error("No audio data received")
+            self._attr_state = "错误：未收到音频数据"
+            self.async_write_ha_state()
             return SpeechResult("", SpeechResultState.ERROR)
 
         try:
@@ -127,8 +130,6 @@ class GroqWhisperCloudEntity(SpeechToTextEntity):
                 wav_file.writeframes(data)
 
             temp_file.seek(0)
-
-            _LOGGER.debug("Temp wav audio file created of %.2f Mb", temp_file.getbuffer().nbytes / (1024 * 1024))
 
             files = {
                 "file": ("audio.wav", temp_file, "audio/wav"),
@@ -142,10 +143,9 @@ class GroqWhisperCloudEntity(SpeechToTextEntity):
                 "response_format": "json"
             }
 
-            # 使用动态 URL 进行请求
             response = await asyncio.to_thread(
                 requests.post,
-                f"{self.link}/openai/v1/audio/transcriptions",  # 动态链接
+                f"{self.link}/openai/v1/audio/transcriptions",
                 headers={
                     "Authorization": f"Bearer {self.api_key}",
                 },
@@ -153,18 +153,18 @@ class GroqWhisperCloudEntity(SpeechToTextEntity):
                 data=data
             )
 
-            _LOGGER.debug("Transcription request took %f s and returned %d - %s", response.elapsed.seconds, response.status_code, response.reason)
-
             transcription = response.json().get("text", "")
 
-            _LOGGER.debug("TRANSCRIPTION: %s", transcription)
-
             if not transcription:
-                _LOGGER.error("No transcription received")
+                self._attr_state = "错误：未收到转录结果"
+                self.async_write_ha_state()
                 return SpeechResult("", SpeechResultState.ERROR)
 
+            self._attr_state = "转录成功"
+            self.async_write_ha_state()
             return SpeechResult(transcription, SpeechResultState.SUCCESS)
 
-        except requests.exceptions.RequestException as e:
-            _LOGGER.error(e)
+        except requests.exceptions.RequestException:
+            self._attr_state = "错误：请求异常"
+            self.async_write_ha_state()
             return SpeechResult("", SpeechResultState.ERROR)
